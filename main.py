@@ -27,7 +27,18 @@ pwm=GPIO.PWM(22,100)
 
 #https://github.com/jrosebr1/imutils/blob/master/bin/range-detector
 #image processing init
-
+greenLower = (29, 86, 6)
+greenUpper = (64, 255, 255)
+pts = deque(maxlen=args["buffer"])
+ 
+# if a video path was not supplied, grab the reference
+# to the webcam
+if not args.get("video", False):
+	camera = cv2.VideoCapture(0)
+ 
+# otherwise, grab a reference to the video file
+else:
+	camera = cv2.VideoCapture(args["video"])
 #clockwise rotation function
 def clkrot:
   GPIO.output(Motor1a,GPIO.HIGH)
