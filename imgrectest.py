@@ -12,13 +12,19 @@ try:
 	camera = cv2.VideoCapture(0)
 except:
     print('nocam')
+width = camera.get(3)
+height = camera.get(4)
+ratio = height/width
+nw = 600
+nh = nw * ratio
+nhb = int(nh/2)
 while True:
         ret, img = camera.read()
         
         # cv2.line(img,(300,0),(300,500),(255,0,0),5)
-        img = imutils.resize(img, width=600)
+        img = imutils.resize(img, width=nw)
         cv2.line(img,(300,0),(300,500),(255,255,0),1)
-        cv2.line(img,(0,170),(600,170),(255,255,0),1)
+        cv2.line(img,(0,nhb),(600,nhb),(255,255,0),1)
         #make dynamic
         cv2.imshow("input", img)
         key = cv2.waitKey(10)
