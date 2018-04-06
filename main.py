@@ -9,6 +9,7 @@ import time
 
 def errlog(code):
     #placeholder for error handler
+
 #initialize motor gpios, servo gpios, camera, usonicsensors, etc
 GPIO.setmode(GPIO.BOARD)
 
@@ -31,8 +32,8 @@ pwm=GPIO.PWM(22,100)
 #image processing init
 greenLower = (29, 86, 6)
 greenUpper = (64, 255, 255)
-yellowLower = (29, 86, 6)
-yellowUpper = (64, 255, 255)
+yellowLower = (1, 0, 255)
+yellowUpper = (39, 155, 255)
 
 # if a video path was not supplied, grab the reference
 # to the webcam
@@ -44,69 +45,115 @@ except:
 
 #clockwise rotation function
 def clkrot:
-  GPIO.output(Motor1a,GPIO.HIGH)
+    GPIO.output(Motor1a,GPIO.HIGH)
 	GPIO.output(Motor1b,GPIO.LOW)
-  GPIO.output(Motor2a,GPIO.LOW)
+    GPIO.output(Motor2a,GPIO.LOW)
 	GPIO.output(Motor2b,GPIO.HIGH)
-  time.sleep(10)
+def cclkrot:
+    GPIO.output(Motor1a,GPIO.LOW)
+	GPIO.output(Motor1b,GPIO.HIGH)
+    GPIO.output(Motor2a,GPIO.HIGH)
+	GPIO.output(Motor2b,GPIO.LOW)
+
+ # time.sleep(1)#change later based on theta
 def fwd:
-  def clkrot:
-  GPIO.output(Motor1a,GPIO.HIGH)
+    GPIO.output(Motor1a,GPIO.HIGH)
 	GPIO.output(Motor1b,GPIO.LOW)
-  GPIO.output(Motor2a,GPIO.HIGH)
+    GPIO.output(Motor2a,GPIO.HIGH)
 	GPIO.output(Motor2b,GPIO.LOW)
 def stopbot:
-  GPIO.output(Motor1a,GPIO.LOW)
+    GPIO.output(Motor1a,GPIO.LOW)
 	GPIO.output(Motor1b,GPIO.LOW)
-  GPIO.output(Motor2a,GPIO.LOW)
+    GPIO.output(Motor2a,GPIO.LOW)
 	GPIO.output(Motor2b,GPIO.LOW)
 
 #scan for object in one frame
 def findColRange(colLow, colHigh):
-    (grabbed, frame) = camera.read()
+    width = camera.get(3)
+    height = camera.get(4)
+    ratio = height/width
+    nw = 600
+    nwb = int(nw/2)
+    nh = nw * ratio
+    nhb = int(nh/2)
+    whCnt = 0
+    while True:
+        whCnt += 1
+        ret, frame = camera.read()
+        # cv2.line(frame,(300,0),(300,500),(255,0,0),5)
+        frame = imutils.resize(frame, width=nw)
+        # cv2.line(frame,(300,0),(300,500),(255,255,0),1)
+        # cv2.line(frame,(0,nhb),(600,nhb),(255,255,0),1)
+        # blurred = cv2.GaussianBlur(frame, (11, 11), 0) #blur to remove noise and retain structure
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, greenLower, greenUpper)
+        mask = cv2.erode(mask, None, iterations=2) # dilations and erosions to remove any small blobs left in the mask
+        mask = cv2.dilate(mask, None, iterations=2)
 
-	frame = imutils.resize(frame, width=600)
-	# blurred = cv2.GaussianBlur(frame, (11, 11), 0) #blur to remove noise and retain structure
-	hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #convert to the HSV color space
+        cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
+        center = None
 
-    # localization of the green ball 
-	mask = cv2.inRange(hsv, colLow, colHigh)
-	mask = cv2.erode(mask, None, iterations=2) # dilations and erosions to remove any small blobs left in the mask
-	mask = cv2.dilate(mask, None, iterations=2)
-    # find contours in the mask and initialize the current
-	# (x, y) center of the ball
-	cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
-		cv2.CHAIN_APPROX_SIMPLE)[-2]
-	center = None
-
-    # only proceed if at least one contour was found
-	if len(cnts) > 0:
-		c = max(cnts, key=cv2.contourArea)
-		((x, y), radius) = cv2.minEnclosingCircle(c)
-		M = cv2.moments(c)
-		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
- 
-		if radius > 5: #threshold sensitivity
-			cv2.circle(frame, (int(x), int(y)), int(radius),
-				(0, 255, 255), 2)
-			cv2.circle(frame, center, 5, (0, 0, 255), -1)
-        cv2.imshow("Frame", frame)
+        if len(cnts) > 0:
+            c = max(cnts, key=cv2.contourArea) #max contor area
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            M = cv2.moments(c)
+            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+            centerRel = (int(M["m10"] / M["m00"]) - nwb, int(M["m01"] / M["m00"]) - nhb)
+            print(centerRel)
+            
+            if radius > 5: #threshold sensitivity for drawing circle
+                cv2.circle(frame, (int(x), int(y)), int(radius),
+                    (0, 255, 255), 2)
+                cv2.circle(frame, center, 5, (0, 0, 255), -1)
+            
+            break
+            return centerRel
+        else:
+            if whCnt > 50:
+                return False
+        cv2.imshow("input", frame)
+        key = cv2.waitKey(10)
+        if key == 27:
+            break
 
 
 #clkw rotation till detects green object
   #while no green object detected, rotate clockwise
   #if detected stop rotation
-clkrot()
+#steps of 5 seconds
+objCoord = False
+while True:
+    clkrot()
+    sleep(5)
+    stopbot()
+    objCoord = findColRange(greenLower,greenUpper)
+    if objCoord == False:
+        continue
+    else:
+        break
 #find green object coordinates
-stopbot()
+
 #align
+
+#aligning and centering object
+if objCoord != False:
+    while objCoord[0] > 5 or objCoord[0] < -5:
+        if objCoord[0] < 0:
+            cclkrot()
+            sleep(1)
+        elif objCoord[0] > 0:
+            clkrot()
+            sleep(1)
+
 
 #move towards green object
   #once in direction of object, move in a straight line towards the object
   #stop when at a specific distance from the object
-fwd()
+if objCoord != False and objCoord[0] < 5 and objCoord[0] > -5:
+    fwd()
 #ultrasonic distance threshold
-stopbot()
+
+    # stopbot()
 
   
 #lower arm wrap arm around the object
@@ -137,10 +184,34 @@ time.sleep(1)
 #clkw rotaton till detects yellow base
   #while no yellow base detected, rotate clockwise
   #if detected stop rotation
+baseCoord = False
+while True:
+    clkrot()
+    sleep(5)
+    stopbot()
+    baseCoord = findColRange(yellowLower,yellowUpper)
+    if baseCoord == False:
+        continue
+    else:
+        break
+
+if baseCoord != False:
+    while baseCoord[0] > 15 or baseCoord[0] < -15:
+        if baseCoord[0] < 0:
+            cclkrot()
+            sleep(1)
+        elif baseCoord[0] > 0:
+            clkrot()
+            sleep(1)
 
 #goes towards yellow base
   #once in direction of base, move in a straight line towards the base
   #stop when at a specific distance from the centre of the base
+if baseCoord != False and baseCoord[0] < 5 and baseCoord[0] > -5:
+    fwd()
+#ultrasonic distance threshold
+
+    # stopbot()
 
 #lowers arm and opens claw
   #lower the arm such that object touches the base
@@ -148,6 +219,7 @@ time.sleep(1)
 
 #lifts the arm
   #lift the arm at the same height as before
+  
 GPIO.cleanup()
 camera.release()
 cv2.destroyAllWindows()

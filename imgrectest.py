@@ -6,8 +6,10 @@ import cv2
 import time
 greenLower = (29, 86, 6)
 greenUpper = (64, 255, 255)
-yellowLower = (29, 86, 6)
-yellowUpper = (64, 255, 255)
+yellowLower = (1, 0, 255)
+yellowUpper = (39, 155, 255)
+yellowLower2 = (7, 117, 171)
+yellowUpper2 = (48, 170, 255)
 try:
 	camera = cv2.VideoCapture(0)
 except:
@@ -24,10 +26,11 @@ while True:
 	
 	# cv2.line(frame,(300,0),(300,500),(255,0,0),5)
 	frame = imutils.resize(frame, width=nw)
-	cv2.line(frame,(300,0),(300,500),(255,255,0),1)
-	cv2.line(frame,(0,nhb),(600,nhb),(255,255,0),1)
+	# cv2.line(frame,(300,0),(300,500),(255,255,0),1)
+	# cv2.line(frame,(0,nhb),(600,nhb),(255,255,0),1)
+    # blurred = cv2.GaussianBlur(frame, (11, 11), 0) #blur to remove noise and retain structure
 	hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-	mask = cv2.inRange(hsv, greenLower, greenUpper)
+	mask = cv2.inRange(hsv, yellowLower2, yellowUpper2)
 	mask = cv2.erode(mask, None, iterations=2) # dilations and erosions to remove any small blobs left in the mask
 	mask = cv2.dilate(mask, None, iterations=2)
 
@@ -39,12 +42,13 @@ while True:
 		((x, y), radius) = cv2.minEnclosingCircle(c)
 		M = cv2.moments(c)
 		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-		centerRel = (int(M["m10"] / M["m00"]) - nwb, int(M["m01"] / M["m00"]) - nhb)
+		centerRel = (int(M["m10"] / M["m00"]) - nwb, -1 * (int(M["m01"] / M["m00"]) - nhb))
 		print(centerRel)
 		if radius > 5: #threshold sensitivity for drawing circle
 			cv2.circle(frame, (int(x), int(y)), int(radius),
 				(0, 255, 255), 2)
 			cv2.circle(frame, center, 5, (0, 0, 255), -1)
+		# break
 		
 
 	cv2.imshow("input", frame)
