@@ -38,7 +38,7 @@ yellowUpper = (39, 155, 255)
 # if a video path was not supplied, grab the reference
 # to the webcam
 try:
-	camera = cv2.VideoCapture(0)
+    camera = cv2.VideoCapture(0)
 except:
     errlog(1)#cam error
 
@@ -46,26 +46,26 @@ except:
 #clockwise rotation function
 def clkrot:
     GPIO.output(Motor1a,GPIO.HIGH)
-	GPIO.output(Motor1b,GPIO.LOW)
+    GPIO.output(Motor1b,GPIO.LOW)
     GPIO.output(Motor2a,GPIO.LOW)
-	GPIO.output(Motor2b,GPIO.HIGH)
+    GPIO.output(Motor2b,GPIO.HIGH)
 def cclkrot:
     GPIO.output(Motor1a,GPIO.LOW)
-	GPIO.output(Motor1b,GPIO.HIGH)
+    GPIO.output(Motor1b,GPIO.HIGH)
     GPIO.output(Motor2a,GPIO.HIGH)
-	GPIO.output(Motor2b,GPIO.LOW)
+    GPIO.output(Motor2b,GPIO.LOW)
 
  # time.sleep(1)#change later based on theta
 def fwd:
     GPIO.output(Motor1a,GPIO.HIGH)
-	GPIO.output(Motor1b,GPIO.LOW)
+    GPIO.output(Motor1b,GPIO.LOW)
     GPIO.output(Motor2a,GPIO.HIGH)
-	GPIO.output(Motor2b,GPIO.LOW)
+    GPIO.output(Motor2b,GPIO.LOW)
 def stopbot:
     GPIO.output(Motor1a,GPIO.LOW)
-	GPIO.output(Motor1b,GPIO.LOW)
+    GPIO.output(Motor1b,GPIO.LOW)
     GPIO.output(Motor2a,GPIO.LOW)
-	GPIO.output(Motor2b,GPIO.LOW)
+    GPIO.output(Motor2b,GPIO.LOW)
 
 #scan for object in one frame
 def findColRange(colLow, colHigh):
@@ -219,7 +219,7 @@ if baseCoord != False and baseCoord[0] < 5 and baseCoord[0] > -5:
 
 #lifts the arm
   #lift the arm at the same height as before
-  
+
 GPIO.cleanup()
 camera.release()
 cv2.destroyAllWindows()
