@@ -14,48 +14,49 @@ try:
 	camera = cv2.VideoCapture(0)
 except:
 	print('nocam')
-width = camera.get(3)
-height = camera.get(4)
-ratio = height/width
-nw = 600
-nwb = int(nw/2)
-nh = nw * ratio
-nhb = int(nh/2)
-while True:
-	ret, frame = camera.read()
-	
-	# cv2.line(frame,(300,0),(300,500),(255,0,0),5)
-	frame = imutils.resize(frame, width=nw)
-	# cv2.line(frame,(300,0),(300,500),(255,255,0),1)
-	# cv2.line(frame,(0,nhb),(600,nhb),(255,255,0),1)
-    # blurred = cv2.GaussianBlur(frame, (11, 11), 0) #blur to remove noise and retain structure
-	hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-	mask = cv2.inRange(hsv, yellowLower2, yellowUpper2)
-	mask = cv2.erode(mask, None, iterations=2) # dilations and erosions to remove any small blobs left in the mask
-	mask = cv2.dilate(mask, None, iterations=2)
+if camera.isOpened():
+    width = camera.get(3)
+    height = camera.get(4)
+    ratio = height/width
+    nw = 600
+    nwb = int(nw/2)
+    nh = nw * ratio
+    nhb = int(nh/2)
+    while True:
+        ret, frame = camera.read()
+        
+        # cv2.line(frame,(300,0),(300,500),(255,0,0),5)
+        frame = imutils.resize(frame, width=nw)
+        # cv2.line(frame,(300,0),(300,500),(255,255,0),1)
+        # cv2.line(frame,(0,nhb),(600,nhb),(255,255,0),1)
+        # blurred = cv2.GaussianBlur(frame, (11, 11), 0) #blur to remove noise and retain structure
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, yellowLower2, yellowUpper2)
+        mask = cv2.erode(mask, None, iterations=2) # dilations and erosions to remove any small blobs left in the mask
+        mask = cv2.dilate(mask, None, iterations=2)
 
-	cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
-	center = None
+        cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
+        center = None
 
-	if len(cnts) > 0:
-		c = max(cnts, key=cv2.contourArea) #max contor area
-		((x, y), radius) = cv2.minEnclosingCircle(c)
-		M = cv2.moments(c)
-		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-		centerRel = (int(M["m10"] / M["m00"]) - nwb, -1 * (int(M["m01"] / M["m00"]) - nhb))
-		print(centerRel)
-		if radius > 5: #threshold sensitivity for drawing circle
-			cv2.circle(frame, (int(x), int(y)), int(radius),
-				(0, 255, 255), 2)
-			cv2.circle(frame, center, 5, (0, 0, 255), -1)
-		# break
-		
+        if len(cnts) > 0:
+            c = max(cnts, key=cv2.contourArea) #max contor area
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            M = cv2.moments(c)
+            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+            centerRel = (int(M["m10"] / M["m00"]) - nwb, -1 * (int(M["m01"] / M["m00"]) - nhb))
+            print(centerRel)
+            if radius > 5: #threshold sensitivity for drawing circle
+                cv2.circle(frame, (int(x), int(y)), int(radius),
+                    (0, 255, 255), 2)
+                cv2.circle(frame, center, 5, (0, 0, 255), -1)
+            # break
+            
 
-	cv2.imshow("input", frame)
+        cv2.imshow("input", frame)
 
-	key = cv2.waitKey(10)
-	if key == 27:
-		break
+        key = cv2.waitKey(10)
+        if key == 27:
+            break
 
 # (grabbed, frame) = camera.read()
 # cv2.imshow("Frame", frame)
@@ -86,4 +87,3 @@ while True:
 #		 cv2.circle(frame, (int(x), int(y)), int(radius),
 #			 (0, 255, 255), 2)
 #		 cv2.circle(frame, center, 5, (0, 0, 255), -1)
-	
