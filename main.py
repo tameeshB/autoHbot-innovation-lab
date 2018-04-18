@@ -1,37 +1,34 @@
+# sudo modprobe bcm2835-v4l2
 #import necessary libraries
 from collections import deque
 import numpy as np
 import argparse
 import imutils
 import cv2
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO
 import time
+import serial
 
-def errlog(code):
+
+#def errlog(code):
     #placeholder for error handler
 
 #initialize motor gpios, servo gpios, camera, usonicsensors, etc
-GPIO.setmode(GPIO.BOARD)
-
-#DC Motor
-Motor1a = 16    # Input Pin
-Motor1b = 18    # Input Pin
-Motor2a = 26    # Input Pin
-Motor2b = 28    # Input Pin
-
-GPIO.setup(Motor1a,GPIO.OUT)
-GPIO.setup(Motor1b,GPIO.OUT)
-GPIO.setup(Motor2a,GPIO.OUT)
-GPIO.setup(Motor2b,GPIO.OUT)
-
-#servo
-GPIO.setup(22, GPIO.OUT) 
-pwm=GPIO.PWM(22,100)
-
+ser = serial.Serial('/dev/ttyACM0', 9600)
+#0 stop
+#1 forward
+#2 backward
+#3 clk
+#4 aclk
+#5 servo 1 low
+#6 servo 1 high
+#7 servo claw hold
+#8 servo claw release
+#9 read distance
 #https://github.com/jrosebr1/imutils/blob/master/bin/range-detector
 #image processing init
-greenLower = (29, 86, 6)
-greenUpper = (64, 255, 255)
+greenLower = (40, 75, 72)
+greenUpper = (170, 184, 255)
 yellowLower = (1, 0, 255)
 yellowUpper = (39, 155, 255)
 
@@ -42,30 +39,14 @@ try:
 except:
     errlog(1)#cam error
 
-
-#clockwise rotation function
-def clkrot:
-    GPIO.output(Motor1a,GPIO.HIGH)
-    GPIO.output(Motor1b,GPIO.LOW)
-    GPIO.output(Motor2a,GPIO.LOW)
-    GPIO.output(Motor2b,GPIO.HIGH)
-def cclkrot:
-    GPIO.output(Motor1a,GPIO.LOW)
-    GPIO.output(Motor1b,GPIO.HIGH)
-    GPIO.output(Motor2a,GPIO.HIGH)
-    GPIO.output(Motor2b,GPIO.LOW)
-
- # time.sleep(1)#change later based on theta
-def fwd:
-    GPIO.output(Motor1a,GPIO.HIGH)
-    GPIO.output(Motor1b,GPIO.LOW)
-    GPIO.output(Motor2a,GPIO.HIGH)
-    GPIO.output(Motor2b,GPIO.LOW)
-def stopbot:
-    GPIO.output(Motor1a,GPIO.LOW)
-    GPIO.output(Motor1b,GPIO.LOW)
-    GPIO.output(Motor2a,GPIO.LOW)
-    GPIO.output(Motor2b,GPIO.LOW)
+def reachedObject():
+    ser.write(7)
+    dist = 0
+    while 1 :
+        dist = int(ser.readline())
+        if dist:
+            break
+    return (dist>50 and dist <100)
 
 #scan for object in one frame
 def findColRange(colLow, colHigh):
@@ -77,7 +58,10 @@ def findColRange(colLow, colHigh):
     nh = nw * ratio
     nhb = int(nh/2)
     whCnt = 0
-    while True:
+    prevX =0
+    prevY =0
+    #stac = np.empty(0)
+    while whCnt<50:
         whCnt += 1
         ret, frame = camera.read()
         # cv2.line(frame,(300,0),(300,500),(255,0,0),5)
@@ -92,29 +76,32 @@ def findColRange(colLow, colHigh):
 
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
         center = None
-
+        if whCnt <2:
+            continue
         if len(cnts) > 0:
             c = max(cnts, key=cv2.contourArea) #max contor area
+            x1,y1,w1,h1 = cv2.boundingRect(cnt)
             ((x, y), radius) = cv2.minEnclosingCircle(c)
             M = cv2.moments(c)
             center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-            centerRel = (int(M["m10"] / M["m00"]) - nwb, int(M["m01"] / M["m00"]) - nhb)
+            centerRel = (int(M["m10"] / M["m00"]) - nwb, int(M["m01"] / M["m00"]) - nhb,radius)
             print(centerRel)
-            
-            if radius > 5: #threshold sensitivity for drawing circle
+            print(radius)
+            print("w: "+str(w1)+" h: "+str(h1))
+            if radius > 15: #threshold sensitivity for drawing circle
                 cv2.circle(frame, (int(x), int(y)), int(radius),
                     (0, 255, 255), 2)
                 cv2.circle(frame, center, 5, (0, 0, 255), -1)
-            
-            break
-            return centerRel
+                return centerRel
+            elif radius < 15:
+                return False
         else:
             if whCnt > 50:
                 return False
-        cv2.imshow("input", frame)
-        key = cv2.waitKey(10)
-        if key == 27:
-            break
+        #cv2.imshow("input", frame)
+        #key = cv2.waitKey(10)
+        #if key == 27:
+        #    break
 
 
 #clkw rotation till detects green object
@@ -123,38 +110,44 @@ def findColRange(colLow, colHigh):
 #steps of 5 seconds
 objCoord = False
 while True:
-    clkrot()
-    sleep(5)
-    stopbot()
     objCoord = findColRange(greenLower,greenUpper)
     if objCoord == False:
-        continue
+        ser.write('3')
+        time.sleep(1)
+        ser.write('0')
+        time.sleep(1)
     else:
+        if objCoord[0] < 10:
+            print('lessthan')
+            ser.write('3')
+            time.sleep(0.5)
+        elif objCoord[0] > 10:
+            print('gtthan')
+            ser.write('4')
+            time.sleep(0.5)
+        print('found object')
+        print(objCoord)
+        print(objCoord[0])
+        print(objCoord[1])
+        ser.write('1')
+        time.sleep(1)
+    if objCoord[2] < 50:
+        print('reached')
         break
 #find green object coordinates
 
 #align
 
 #aligning and centering object
-if objCoord != False:
-    while objCoord[0] > 5 or objCoord[0] < -5:
-        if objCoord[0] < 0:
-            cclkrot()
-            sleep(1)
-        elif objCoord[0] > 0:
-            clkrot()
-            sleep(1)
+# if objCoord != False:
+#     #ser.write('0')
+#     while objCoord[0] > 10 or objCoord[0] < -10:
+#     objCoord = findColRange(greenLower,greenUpper)
+#     print(objCoord)
+      
 
-
-#move towards green object
-  #once in direction of object, move in a straight line towards the object
-  #stop when at a specific distance from the object
-if objCoord != False and objCoord[0] < 5 and objCoord[0] > -5:
-    fwd()
-#ultrasonic distance threshold
-
-    # stopbot()
-
+camera.release()
+cv2.destroyAllWindows()
   
 #lower arm wrap arm around the object
   #lower the arm such that claw is around the object
@@ -220,6 +213,5 @@ if baseCoord != False and baseCoord[0] < 5 and baseCoord[0] > -5:
 #lifts the arm
   #lift the arm at the same height as before
 
-GPIO.cleanup()
 camera.release()
 cv2.destroyAllWindows()
